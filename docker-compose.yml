@@ -1,0 +1,49 @@
+version: '3.7'
+
+services:
+  controller:
+    build:
+      context: ./controller
+      dockerfile: ./Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database
+      - redis
+    restart: always
+    volumes:
+      - ./data:/data
+    env_file: ./controller/.env
+    # Попытался распараллелить с помощью gunicorn, но не вышло
+    # command: gunicorn -b 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker main:app #--workers=8
+
+  manipulator:
+    build:
+      context:  ./manipulator
+    ports:
+      - "8090:8090"
+    restart: always
+
+  sensors:
+    build:
+      context:  ./sensors
+    ports:
+      - "8081:8081"
+    restart: always
+
+  database:
+    image: alpine:latest
+    volumes:
+      - ./data:/data
+    command: sh -c "apk --no-cache add sqlite && if [ ! -f /data/db.sqlite ]; then cp /data/initial-db.sqlite /data/db.sqlite; fi && sqlite3 /data/db.sqlite < /data/init.sql && tail -f /dev/null"
+    container_name: sqlite-container
+
+# Оставил редис, если нужно будет дальше с ним работать
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    container_name: redis
+
+
+
